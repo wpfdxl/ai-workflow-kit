@@ -1,0 +1,14 @@
+.DS_Store
+__pycache__/
+*.pyc
+.Python
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+*.log
+.idea/
+.vscode/
+*.swp
+doc/.hfdoc_cache/
