@@ -1,7 +1,5 @@
-# archive — 需求开发档案
+# archive/
 
-已完成需求从 `workspace/<需求名>/` 移入此处（需求/方案/接口 md/STATUS 等）。
+完工且上线稳定后，把 `workspace/<需求名>/` 整夹搬到这里。不要在本目录手写新需求。
 
-接口 json 请放到 `../doc/archive/<需求名>/`，不要混进本目录。
-
-操作见根目录 `README.md` 归档一节。
+搬家命令见 `FLOW.md`。

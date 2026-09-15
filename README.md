@@ -1,115 +1,192 @@
-# AI Workflow Kit
+# AI 需求分解编码工作流
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-
-Language-agnostic workflow for AI-assisted feature delivery:
-
-**Requirement → Design Doc → API Contract → Implementation**
-
-Each stage is a file contract. Humans review before the next stage, so the AI only codes against approved context.
-
-中文说明见下方；English summary at the top for discoverability.
+> 给 **人 + 任意模型** 用。目标不是对着一句话直接写代码，而是先把需求写成文件契约，模型只在已确认信息上改代码。
+>
+> **不绑定语言、框架、公司仓库。** 拷到任意工程即可用。本目录不含历史需求、归档和业务代码路径。
+>
+> 阶段怎么流转、归档、并行 → `FLOW.md`  
+> 拷到新项目 → `HOW_TO_ADOPT.md`  
+> 本仓库个性化（语言、默认分支、规范文件）→ `project.local.md`
 
 ---
 
-## Why
+## 0. 任何模型先读（硬规则）
 
-AI coding fails most often because context is fuzzy. This kit fixes that by:
+**不要**看到需求就改业务代码。先读当前需求的 `STATUS.md`，按阶段走。
 
-1. Freezing each stage into markdown / JSON files
-2. Requiring human review between stages
-3. Separating **workflow** (language-neutral) from **rules** (`profiles/` per stack)
+### 0.1 用户说了什么 → 你做什么
 
-Copy this repository next to any codebase, pick or generate a profile, then run features through the SOP.
+| 用户说了什么 | 你做什么 | 禁止 |
+|---|---|---|
+| 新需求 / 建工作区 / 填需求 | 建 `workspace/<需求名>/`，写 `00_需求.md` + `STATUS.md`，登记 `workspace/INDEX.md` | 改业务代码 |
+| 出方案 / 分解方案 | 读 `00` + `prompts/step1_生成开发方案.md`，写 `01_开发方案.md` | 方案没定稿就写代码 |
+| review 方案 / 改方案 | 按 `checklists/开发方案review.md` 改 `01` | 跳过 ❓ 未确认项直接编码 |
+| 出接口文档 | 读定稿 `01` + `prompts/step2_生成接口文档.md`，写 `02`；有对外 API 再写 `docs/<需求名>/` | 接口字段自己发明 |
+| 开始编码 | **先确认阶段②③过了**；读 `03` + `01` + `02` + `prompts/step3_执行编码.md` | 用 `00` 推翻已定稿 01/02 |
+| 归档 | 按 `FLOW.md` 搬目录、改 INDEX | 把散落文档扔在本目录根下 |
 
-## Features
+### 0.2 上下文优先级（冲突时按这个）
 
-- 4-stage SOP + templates, prompts, checklists
-- Pluggable stack profiles (Go Kratos DDD, FastAPI, Express, Gin, ThinkPHP-style, …)
-- `bootstrap/step0` — ask an AI to generate rules for *your* language/framework
-- `workspace/` + `doc/` + `archive/` — in-progress vs archived work
-- Built-in HFDoc Viewer (`doc/sbdoc_web.py`) for API JSON preview
-- Cursor rule: `.cursor/rules/workflow.mdc`
+1. 当前需求目录里 **已定稿** 的 `01_开发方案.md`、`02_接口文档.md`
+2. 目标工程自己的规范（`project.local.md` 里列出的 CONTRIBUTING / AGENTS.md / 规则文件）
+3. `00_需求.md` 只用于阶段①；阶段④ **不得**用它推翻 01/02
+4. 口头补充：先写进 `00` 或 `01` 第 10 节并等人确认，再改代码
 
-## Quick start（推荐：Clone → 让 AI 初始化）
-
-```bash
-git clone <this-repo-url> ai-workflow-kit
-cd ai-workflow-kit
-# Open this folder in Cursor / your AI IDE
-```
-
-1. Paste [`bootstrap/init_接入我的项目.md`](bootstrap/init_接入我的项目.md) to the AI and fill **你的项目信息**（language, framework, `code_root`, …）.
-2. The AI creates `profiles/<your-id>/`, updates `PROJECT.md`, and **deletes unrelated samples** (`profiles/*-sample/`, `workspace/_example_*`, matching `doc/` demos).
-3. Check [`docs/哪些可以删.md`](docs/哪些可以删.md). Example chat: [`docs/示例对话_初始化.md`](docs/示例对话_初始化.md).
-4. Start a real feature under `workspace/<需求名>/` (same name as `doc/<需求名>/`), then run stages via `workspace/_prompts/`.
-5. Preview APIs:
-
-```bash
-cd doc
-python3 sbdoc_web.py --port 9122
-```
-
-Guides: [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) · [`docs/入门指南.md`](docs/入门指南.md) · [`docs/PUBLISH.md`](docs/PUBLISH.md)
-
-## Layout
+### 0.3 唯一路径
 
 ```
-ai-workflow-kit/
-├── PROJECT.md                 # active profile + code_root
-├── bootstrap/                 # step0: generate a new profile
-├── profiles/                  # per-stack RULES / coding_order / checklist
-├── workspace/                 # feature workbench
-│   ├── _templates/ _prompts/ _checklists/
-│   ├── _example_*             # 开箱演示；init 后可删
-│   └── INDEX.md
-├── doc/                       # API JSON + HFDoc Viewer
-│   └── archive/
-└── archive/                   # archived feature docs
+模糊需求
+  → 00_需求.md          （人填清楚）
+  → 01_开发方案.md      （模型写，人过 checklist）
+  → 02_接口文档.md      （模型写，人过 checklist；无对外 API 可注明跳过 json）
+  → 03_编码任务.md      （从 01 第 9 节抄 Task）
+  → 业务代码            （模型只消费 01+02+目标仓规范）
 ```
 
-初始化后保留/删除清单：[`docs/哪些可以删.md`](docs/哪些可以删.md)。
-
-## Workflow SOP
-
-| Stage | Input | Who | Output |
-|---|---|---|---|
-| 0 Profile | Your stack description | AI + you | `profiles/<id>/` + `PROJECT.md` |
-| 1 Design | `00_需求.md` | AI | `01_开发方案.md` |
-| 2 Review design | `01` | You | Approved design |
-| 3 API docs | Approved `01` | AI | `02_接口文档.md` + `doc/<feature>/*.json` |
-| 4 Code | `01` + `02` + profile | AI | Code + checklists |
-
-Archive when done:
-
-```bash
-mkdir -p archive doc/archive
-rm -f workspace/<feature>/*接口文档.json
-mv workspace/<feature> archive/<feature>
-[ -d "doc/<feature>" ] && mv "doc/<feature>" "doc/archive/<feature>"
-# update workspace/INDEX.md
-```
-
-## Profiles
-
-See [`profiles/README.md`](profiles/README.md). Default in `PROJECT.md`: `go125-kratos-ddd-sample`.
-
-Samples are **illustrative**, not corporate standards. Replace them with your own via step0.
-
-## Contributing
-
-See [`CONTRIBUTING.md`](CONTRIBUTING.md).
-
-## License
-
-[MIT](LICENSE)
+达成率低的根因是 **上下文模糊**。下一层只依赖上一层已背书的文件。
 
 ---
 
-## 中文摘要
+## 1. 本目录结构
 
-把「需求 → 开发方案 → 接口文档 → 编码」做成**分层文件契约**。  
+```
+ai-dev-workflow/
+├── README.md                 # 本手册
+├── FLOW.md                   # 阶段 / 归档 / 并行
+├── HOW_TO_ADOPT.md           # 拷到其他工程
+├── AGENTS.md                 # 给模型的短入口（可再复制到目标仓）
+├── project.local.md          # 每个工程填自己的语言、分支、规范路径
+├── templates/                # 复制结构，不要改模板本身来写需求
+├── prompts/
+├── checklists/
+├── workspace/                # 进行中需求
+│   ├── INDEX.md
+│   ├── _example/             # 虚构样例，结构照抄
+│   └── <需求名>/
+├── docs/                     # 对外接口文档（OpenAPI / 任意约定格式）
+└── archive/                  # 完工档案（从 workspace 搬来）
+```
 
-**接入你的工程**：Clone → 打开本目录 → 把 [`bootstrap/init_接入我的项目.md`](bootstrap/init_接入我的项目.md) 发给 AI（填技术栈与 `code_root`）→ 自动生成规范并删掉无关示例 → 再开真实需求。  
+一个需求目录最少有：
 
-对话范例：[`docs/示例对话_初始化.md`](docs/示例对话_初始化.md)。可删清单：[`docs/哪些可以删.md`](docs/哪些可以删.md)。
+| 文件 | 谁写 | 模型何时读 |
+|---|---|---|
+| `STATUS.md` | 人/模型同步 | **每次开口先读** |
+| `00_需求.md` | 人为主 | 只在阶段① |
+| `01_开发方案.md` | 模型，人定稿 | 阶段③④ |
+| `02_接口文档.md` | 模型，人定稿 | 阶段④ |
+| `03_编码任务.md` | 从 01 第 9 节生成 | 阶段④ 作业本 |
+| `schema.sql` 等 | 有存储结构才要 | 阶段④ |
+
+---
+
+## 2. 四阶段
+
+| 阶段 | 输入 | 执行者 | 固定材料 | 产出 | 过闸 |
+|---|---|---|---|---|---|
+| ① 分解方案 | `00` | 模型 | `prompts/step1` + `templates/01` | `01` | 人过开发方案 checklist |
+| ② review 方案 | `01` | **人**（模型只按意见改） | checklist | `01` 定稿，❓ 已拍 | 全过才进③ |
+| ③ 接口文档 | 定稿 `01` | 模型 | `prompts/step2` + `templates/02` | `02` ± `docs/<需求>/` | 人过接口 checklist |
+| ④ 编码 | 定稿 `01`+`02` | 模型 | `prompts/step3` + `03` | 代码 + 勾选 Task | 编码自检 + 对照默认分支 review |
+
+**阶段②是人闸门。** `01` 未定稿或第 10 节 ❓ 未拍板，禁止写业务代码。  
+阶段①②③默认 **不改** 业务目录。
+
+无独立 HTTP/RPC 契约（纯 CLI、一次性脚本、仅内部库）可以只有 `02` 的说明段，INDEX 注明「无独立接口文档」。
+
+---
+
+## 3. 可复制对话
+
+把 `<需求名>` 换成文件夹名。优先 `@` 引用文件。
+
+### 3.1 启动
+
+```
+按 @ai-dev-workflow/README.md 启动需求「<需求名>」：
+1. 复制 templates/ 到 workspace/<需求名>/
+2. 按 00 模板把下面需求填进 00_需求.md
+3. 写 STATUS.md，阶段①
+4. 在 workspace/INDEX.md 加一行
+先不要写业务代码。
+```
+
+### 3.2 生成方案
+
+```
+读 @ai-dev-workflow/prompts/step1_生成开发方案.md
+和 @ai-dev-workflow/workspace/<需求名>/00_需求.md
+按 @ai-dev-workflow/templates/01_开发方案.md
+写 workspace/<需求名>/01_开发方案.md
+更新 STATUS.md。不要写业务代码。
+```
+
+### 3.3 人 review 方案
+
+```
+按 @ai-dev-workflow/checklists/开发方案review.md 改
+@ai-dev-workflow/workspace/<需求名>/01_开发方案.md
+问题：<哪条不过、期望改成什么>
+仍不要写业务代码。
+```
+
+### 3.4 生成接口文档
+
+```
+方案已定稿。读 @ai-dev-workflow/prompts/step2_生成接口文档.md
+和定稿 01，写 02_接口文档.md。
+有对外 API 则在 docs/<需求名>/ 写本工程约定的接口文件（OpenAPI / 项目既有格式）。
+不要写业务代码。
+```
+
+### 3.5 编码
+
+```
+接口文档已定稿。读 @ai-dev-workflow/prompts/step3_执行编码.md
+和 03_编码任务.md。只按 01+02+project.local.md 实现。
+编码顺序按方案第 9 节（默认：数据层 → 业务层 → 接口层）。
+每完成一个 Task 勾选 03。全部完成后跑编码自检，并对照默认分支做 review。
+```
+
+### 3.6 归档
+
+```
+按 @ai-dev-workflow/FLOW.md 把「<需求名>」归档。
+```
+
+---
+
+## 4. 阶段④通用禁令
+
+语言细节以 `project.local.md` 和目标仓规范为准。下面几条跨语言都成立：
+
+1. 先读该需求 `03` 的「上下文」`@` 文件，再动手。
+2. 每个 Task 先搜索仓库里的相似实现，再写；禁止凭空造分层。
+3. 入口层不直连存储；跨模块走对方的业务层。
+4. 最小修改：不格式化无关文件，不重构方案没写的部分。
+5. 实现必须与定稿 `01`/`02` 字段、路径、状态机一致。
+6. 写完：勾选 Task → 编码自检 → 对照默认分支 review，修阻塞级问题。
+
+---
+
+## 5. STATUS 与 INDEX
+
+- **STATUS.md**：当前阶段、阻塞、下一步。每次会话先看，再决定能不能改代码。
+- **INDEX.md**：所有在跑需求 + **本次会改的文件**。启动前扫交集，有冲突则分支隔离或串行编码。
+
+规矩：一需求一对话；需求名 = 文件夹名且唯一；文档隔离 ≠ 代码隔离。
+
+---
+
+## 6. 模型常见翻车
+
+| 翻车 | 正确做法 |
+|---|---|
+| 用户丢一句需求就开始改代码 | 先 00 → 01，等人过闸 |
+| 用 `00` 覆盖已定稿 `02` | 先改 02 并 review，再改代码 |
+| 方案第 10 节 ❓ 还在就编码 | 停，问人 |
+| 接口字段与方案第 4 节不一致 | 改 02 对齐 01，或回去改 01 |
+| 两个在跑需求改同一文件 | 先看 INDEX，分支或排队 |
+| 把散落 md 扔在本目录根下 | 一律进 `workspace/<需求名>/` |
+
+一句话：**人把需求写清楚并过闸；模型按模板填 01/02，按 03 写代码。**
